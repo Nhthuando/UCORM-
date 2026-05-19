@@ -7,11 +7,11 @@ export const authMiddleware = (req,res,next) => {
         if(!bearerToken.startsWith("Bearer ")) return res.status(401).json({message: "Token không hợp lệ!"});
         const token = bearerToken.split(" ")[1];
         if(!token) return res.status(401).json({message: "Không tìm thấy token!"});
-        const jwtsecret = process.env.JWT_SECRET;
-        if(!jwtsecret) return res.status(500).json({message: "Không tìm thấy JWT_SECRET!"});
+        const jwtsecret = process.env.JWT_SECRETS;
+        if(!jwtsecret) return res.status(500).json({message: "Không tìm thấy JWT_SECRETS!"});
         const decode = jwt.verify(token,jwtsecret);
-        const {userId, userName, userEmail} = decode;
-        req.user = {userId, userName, userEmail};
+        const { userId: id, userName: name, userEmail: email } = decode;
+        req.user = {id, name, email};
         next();
     } catch (error) {
         console.log(error);
