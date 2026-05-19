@@ -30,7 +30,7 @@ export const login = async(req,res) => {
         if(!user) return res.status(401).json({message: "Tài khoản hoặc mật khẩu không đúng!"});
         const hashedPass = await bcrypt.compare(password, user.password);
         if(hashedPass === false) return res.status(401).json({message: "Tài khoản hoặc mật khẩu không đúng!"});
-        const token = jwt.sign({userId : user.id, userEmail : user.email}, process.env.JWT_SECRETS, {expiresIn: "1h"});
+        const token = jwt.sign({userId : user.id, userEmail : user.email, userName : user.name}, process.env.JWT_SECRETS, {expiresIn: "1h"});
         return res.status(200).json({message: "Đăng nhập thành công!", token, name: user.name, email: user.email});
     } catch (error) {
         console.log(error);
