@@ -12,7 +12,7 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 
 const allowedOrigins = [
-    "ucorm.vercel.app",
+    "https://ucorm.vercel.app",
     "http://localhost:5173"
 ];
 
