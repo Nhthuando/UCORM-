@@ -164,9 +164,12 @@ export default function DashboardPage({ user, onLogout }: DashboardPageProps) {
             <MapPin className="w-5 h-5" />
             {sidebarOpen && <span>Places</span>}
           </button>
-          <button className="w-full flex items-center gap-3 px-4 py-3 text-gray-700 hover:bg-gray-50 rounded-lg font-medium transition-colors">
+          <button
+            onClick={onLogout}
+            className="w-full flex items-center gap-3 px-4 py-3 text-gray-700 hover:bg-gray-50 rounded-lg font-medium transition-colors"
+          >
             <Settings className="w-5 h-5" />
-            {sidebarOpen && <span>Settings</span>}
+            {sidebarOpen && <span>Đăng xuất</span>}
           </button>
         </nav>
       </aside>
