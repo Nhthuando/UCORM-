@@ -2,9 +2,23 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router';
 import { useState } from 'react';
 import LoginPage from './components/LoginPage';
 import DashboardPage from './components/DashboardPage';
+import { clearAuth, getAuthToken, getStoredUser, setAuth, type AuthInfo } from './api/client';
 
 export default function App() {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(() => Boolean(getAuthToken()));
+  const [user, setUser] = useState(() => getStoredUser());
+
+  const handleLogin = (auth: AuthInfo) => {
+    setAuth(auth);
+    setUser({ name: auth.name, email: auth.email });
+    setIsAuthenticated(true);
+  };
+
+  const handleLogout = () => {
+    clearAuth();
+    setUser(null);
+    setIsAuthenticated(false);
+  };
 
   return (
     <BrowserRouter>
@@ -15,7 +29,7 @@ export default function App() {
             isAuthenticated ? (
               <Navigate to="/dashboard" replace />
             ) : (
-              <LoginPage onLogin={() => setIsAuthenticated(true)} />
+              <LoginPage onLogin={handleLogin} />
             )
           }
         />
@@ -23,7 +37,7 @@ export default function App() {
           path="/dashboard"
           element={
             isAuthenticated ? (
-              <DashboardPage />
+              <DashboardPage user={user} onLogout={handleLogout} />
             ) : (
               <Navigate to="/login" replace />
             )

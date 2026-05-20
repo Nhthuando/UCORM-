@@ -1,8 +1,15 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { X, Star, Check, Loader2 } from 'lucide-react';
+import {
+  ApiError,
+  approveReview,
+  generateAIReplies,
+  getAIReplies,
+  type ApiReply,
+} from '../api/client';
 
 type Review = {
-  id: number;
+  id: string;
   author: string;
   rating: number;
   text: string;
@@ -21,102 +28,102 @@ type AIReplyOption = {
 interface ReviewDetailModalProps {
   review: Review;
   onClose: () => void;
-  onStatusChange: (reviewId: number, newStatus: 'pending' | 'resolved') => void;
+  onStatusChange: (reviewId: string, newStatus: 'pending' | 'resolved') => void;
+  onAuthError: () => void;
 }
 
-const generateAIReplies = (review: Review): AIReplyOption[] => {
-  const isPositive = review.rating >= 4;
-  const isNegative = review.rating <= 2;
+const replyMeta: Record<string, { title: string; tone: string }> = {
+  STANDARD: { title: 'Chuyên nghiệp', tone: 'Standard' },
+  FRIENDLY: { title: 'Thân thiện', tone: 'Friendly' },
+  FIX: { title: 'Khắc phục lỗi', tone: 'Fix' },
+};
 
-  if (isPositive) {
-    return [
-      {
-        id: 'professional',
-        title: 'Chuyên nghiệp',
-        tone: 'Standard',
-        content: `Xin chân thành cảm ơn quý khách ${review.author} đã dành thời gian đánh giá và chia sẻ trải nghiệm tích cực tại ${review.place}. Chúng tôi rất vui khi biết rằng quý khách hài lòng với dịch vụ của chúng tôi. Hy vọng sẽ được phục vụ quý khách trong những lần tới.`,
-      },
-      {
-        id: 'friendly',
-        title: 'Thân thiện',
-        tone: 'Friendly',
-        content: `Cảm ơn bạn ${review.author} rất nhiều! Đội ngũ chúng mình siêu vui khi được phục vụ bạn. Những lời khen của bạn là động lực lớn để chúng mình tiếp tục cải thiện dịch vụ mỗi ngày. Hẹn gặp lại bạn sớm nhé! 😊`,
-      },
-      {
-        id: 'gratitude',
-        title: 'Tri ân',
-        tone: 'Grateful',
-        content: `${review.place} xin gửi lời cảm ơn chân thành nhất đến quý khách ${review.author}. Sự hài lòng của quý khách là niềm vinh dự và động lực to lớn cho toàn bộ đội ngũ của chúng tôi. Chúng tôi cam kết sẽ không ngừng nâng cao chất lượng dịch vụ để mang đến những trải nghiệm tuyệt vời nhất cho quý khách.`,
-      },
-    ];
-  } else if (isNegative) {
-    return [
-      {
-        id: 'professional',
-        title: 'Chuyên nghiệp',
-        tone: 'Standard',
-        content: `Kính gửi quý khách ${review.author}, chúng tôi xin chân thành xin lỗi về trải nghiệm chưa được như mong đợi của quý khách. Ban quản lý ${review.place} đã ghi nhận phản hồi của quý khách và đang khẩn trương xem xét để cải thiện. Chúng tôi rất mong nhận được cơ hội để phục vụ quý khách tốt hơn trong tương lai.`,
-      },
-      {
-        id: 'friendly',
-        title: 'Thân thiện',
-        tone: 'Friendly',
-        content: `Chào ${review.author}, team mình thật sự rất xin lỗi vì những thiếu sót này! Mình đã ghi nhận và đang làm việc để khắc phục ngay. Mình rất mong được một cơ hội nữa để làm bạn hài lòng. Nếu bạn có thêm góp ý gì, đừng ngại liên hệ trực tiếp với mình nhé!`,
-      },
-      {
-        id: 'fix',
-        title: 'Khắc phục lỗi',
-        tone: 'Fix',
-        content: `Kính gửi ${review.author}, ${review.place} xin chân thành xin lỗi về sự bất tiện này. Chúng tôi đã xác định các vấn đề quý khách phản ánh và đã triển khai các biện pháp khắc phục cụ thể:\n\n• Tăng cường đào tạo nhân viên về chất lượng dịch vụ\n• Nâng cấp quy trình kiểm soát chất lượng\n• Cải thiện cơ sở vật chất\n\nChúng tôi rất mong được đón tiếp quý khách trở lại để chứng minh sự cải thiện của chúng tôi.`,
-      },
-    ];
-  } else {
-    return [
-      {
-        id: 'professional',
-        title: 'Chuyên nghiệp',
-        tone: 'Standard',
-        content: `Xin cảm ơn quý khách ${review.author} đã dành thời gian đánh giá. Chúng tôi trân trọng mọi ý kiến đóng góp từ quý khách. ${review.place} sẽ tiếp tục nỗ lực để mang đến trải nghiệm tốt hơn trong những lần tới.`,
-      },
-      {
-        id: 'friendly',
-        title: 'Thân thiện',
-        tone: 'Friendly',
-        content: `Cảm ơn ${review.author} đã chia sẻ! Team mình rất trân trọng mọi phản hồi và sẽ cố gắng cải thiện để mang đến trải nghiệm tuyệt vời hơn cho bạn trong lần sau. Hy vọng sẽ được gặp lại bạn!`,
-      },
-      {
-        id: 'improve',
-        title: 'Cải thiện',
-        tone: 'Improvement',
-        content: `Kính gửi ${review.author}, cảm ơn quý khách đã góp ý. ${review.place} cam kết sẽ xem xét kỹ lưỡng các điểm cần cải thiện mà quý khách đề cập để nâng cao chất lượng dịch vụ. Sự hài lòng của quý khách là ưu tiên hàng đầu của chúng tôi.`,
-      },
-    ];
-  }
+const mapReply = (reply: ApiReply): AIReplyOption => {
+  const meta = replyMeta[reply.type] || { title: 'Phản hồi', tone: reply.type };
+  return {
+    id: reply.id,
+    title: meta.title,
+    tone: meta.tone,
+    content: reply.content,
+  };
 };
 
 export default function ReviewDetailModal({
   review,
   onClose,
   onStatusChange,
+  onAuthError,
 }: ReviewDetailModalProps) {
   const [selectedReply, setSelectedReply] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [aiReplies, setAIReplies] = useState<AIReplyOption[]>([]);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const handleGenerateAI = () => {
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadReplies = async () => {
+      try {
+        const replies = await getAIReplies(review.id);
+        if (!isMounted) return;
+        setAIReplies(replies.map(mapReply));
+      } catch (error) {
+        if (!isMounted) return;
+        if (error instanceof ApiError && error.status === 401) {
+          onAuthError();
+          return;
+        }
+        if (error instanceof ApiError && error.status === 404) {
+          return;
+        }
+      }
+    };
+
+    void loadReplies();
+    return () => {
+      isMounted = false;
+    };
+  }, [review.id, onAuthError]);
+
+  const handleGenerateAI = async () => {
     setIsGenerating(true);
-    setTimeout(() => {
-      setAIReplies(generateAIReplies(review));
+    setErrorMessage(null);
+    try {
+      const replies = await generateAIReplies(review.id);
+      setAIReplies(replies.map(mapReply));
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 401) {
+        onAuthError();
+        return;
+      }
+      if (error instanceof ApiError) {
+        setErrorMessage(error.message);
+      } else {
+        setErrorMessage('Không thể tạo phản hồi AI, vui lòng thử lại.');
+      }
+    } finally {
       setIsGenerating(false);
-    }, 1500);
+    }
   };
 
-  const handleApprove = (replyId: string) => {
+  const handleApprove = async (replyId: string) => {
     setSelectedReply(replyId);
-    setTimeout(() => {
+    setErrorMessage(null);
+    try {
+      await approveReview(review.id, replyId);
       onStatusChange(review.id, 'resolved');
       onClose();
-    }, 500);
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 401) {
+        onAuthError();
+        return;
+      }
+      if (error instanceof ApiError) {
+        setErrorMessage(error.message);
+      } else {
+        setErrorMessage('Không thể phê duyệt phản hồi, vui lòng thử lại.');
+      }
+    }
   };
 
   return (
@@ -139,7 +146,7 @@ export default function ReviewDetailModal({
         <div className="p-6 border-b border-gray-200 overflow-y-auto">
           <div className="flex items-start gap-4 mb-4">
             <div className="w-12 h-12 bg-gradient-to-br from-gray-300 to-gray-400 rounded-full flex items-center justify-center text-white font-bold text-lg">
-              {review.author[0]}
+              {review.author?.[0] || '?'}
             </div>
             <div className="flex-1">
               <div className="flex items-center justify-between mb-2">
@@ -176,6 +183,11 @@ export default function ReviewDetailModal({
 
         {/* AI Replies Section */}
         <div className="p-6 flex-1 overflow-y-auto">
+          {errorMessage && (
+            <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-700">
+              {errorMessage}
+            </div>
+          )}
           {aiReplies.length === 0 ? (
             <div className="text-center py-12">
               <div className="w-16 h-16 bg-blue-50 rounded-full flex items-center justify-center mx-auto mb-4">

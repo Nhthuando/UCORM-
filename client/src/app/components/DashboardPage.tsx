@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   Store,
   LayoutDashboard,
@@ -15,9 +15,19 @@ import {
 } from 'lucide-react';
 import ReviewDetailModal from './ReviewDetailModal';
 import AddPlaceModal from './AddPlaceModal';
+import {
+  ApiError,
+  fetchReviews,
+  getPlaceReviews,
+  getPlaces,
+  type ApiPlace,
+  type ApiReview,
+  type StoredUser,
+} from '../api/client';
 
 type Review = {
-  id: number;
+  id: string;
+  placeId: string;
   author: string;
   rating: number;
   text: string;
@@ -26,60 +36,86 @@ type Review = {
   place: string;
 };
 
-const mockReviews: Review[] = [
-  {
-    id: 1,
-    author: 'Nguyễn Văn A',
-    rating: 5,
-    text: 'Khách sạn rất tuyệt vời, phòng sạch sẽ, nhân viên thân thiện. Tôi sẽ quay lại!',
-    status: 'resolved',
-    date: '2026-05-18',
-    place: 'Khách sạn Paradise',
-  },
-  {
-    id: 2,
-    author: 'Trần Thị B',
-    rating: 2,
-    text: 'Dịch vụ kém, đồ ăn không ngon. Phòng không được vệ sinh kỹ.',
-    status: 'pending',
-    date: '2026-05-19',
-    place: 'Nhà hàng Hương Việt',
-  },
-  {
-    id: 3,
-    author: 'Lê Minh C',
-    rating: 4,
-    text: 'Nhìn chung tốt, nhưng wifi hơi yếu. View từ phòng đẹp lắm.',
-    status: 'pending',
-    date: '2026-05-20',
-    place: 'Khách sạn Paradise',
-  },
-  {
-    id: 4,
-    author: 'Phạm Thu D',
-    rating: 5,
-    text: 'Món ăn ngon tuyệt, giá cả hợp lý, không gian ấm cúng.',
-    status: 'resolved',
-    date: '2026-05-17',
-    place: 'Nhà hàng Hương Việt',
-  },
-  {
-    id: 5,
-    author: 'Hoàng Văn E',
-    rating: 3,
-    text: 'Bình thường, không có gì đặc biệt. Giá hơi cao so với chất lượng.',
-    status: 'pending',
-    date: '2026-05-16',
-    place: 'Khách sạn Paradise',
-  },
-];
+interface DashboardPageProps {
+  user: StoredUser | null;
+  onLogout: () => void;
+}
 
-export default function DashboardPage() {
+export default function DashboardPage({ user, onLogout }: DashboardPageProps) {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [filterStatus, setFilterStatus] = useState<'all' | 'pending' | 'resolved'>('all');
   const [selectedReview, setSelectedReview] = useState<Review | null>(null);
   const [showAddPlace, setShowAddPlace] = useState(false);
-  const [reviews, setReviews] = useState<Review[]>(mockReviews);
+  const [reviews, setReviews] = useState<Review[]>([]);
+  const [places, setPlaces] = useState<ApiPlace[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  const userInitial = (user?.name || user?.email || 'U').trim().charAt(0).toUpperCase();
+
+  useEffect(() => {
+    void loadDashboardData();
+  }, []);
+
+  const loadDashboardData = async () => {
+    setIsLoading(true);
+    setErrorMessage(null);
+
+    try {
+      const placesResponse = await getPlaces();
+      const placeList = placesResponse.place || [];
+      setPlaces(placeList);
+
+      const allReviews = await Promise.all(
+        placeList.map((place) => loadReviewsForPlace(place))
+      );
+
+      setReviews(allReviews.flat());
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 401) {
+        onLogout();
+        return;
+      }
+
+      if (error instanceof ApiError) {
+        setErrorMessage(error.message);
+      } else {
+        setErrorMessage('Không thể tải dữ liệu, vui lòng thử lại.');
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const loadReviewsForPlace = async (place: ApiPlace) => {
+    try {
+      const response = await getPlaceReviews(place.id);
+      return response.reviews.map((review) => mapReview(review, place));
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 404) {
+        const response = await fetchReviews(place.id);
+        return response.savedReviews.map((review) => mapReview(review, place));
+      }
+      throw error;
+    }
+  };
+
+  const mapReview = (review: ApiReview, place: ApiPlace): Review => {
+    const rawDate = review.published_at || review.created_at;
+    const date = rawDate ? new Date(rawDate).toISOString().slice(0, 10) : '';
+    const status = review.status?.toLowerCase() === 'resolved' ? 'resolved' : 'pending';
+
+    return {
+      id: review.id,
+      placeId: review.place_id,
+      author: review.author_name || 'Ẩn danh',
+      rating: review.rating ?? 0,
+      text: review.text || '',
+      status,
+      date,
+      place: place.name || 'Địa điểm',
+    };
+  };
 
   const filteredReviews =
     filterStatus === 'all' ? reviews : reviews.filter((r) => r.status === filterStatus);
@@ -88,11 +124,15 @@ export default function DashboardPage() {
     total: reviews.length,
     pending: reviews.filter((r) => r.status === 'pending').length,
     resolved: reviews.filter((r) => r.status === 'resolved').length,
-    places: new Set(reviews.map((r) => r.place)).size,
+    places: places.length,
   };
 
-  const handleReviewStatusChange = (reviewId: number, newStatus: 'pending' | 'resolved') => {
+  const handleReviewStatusChange = (reviewId: string, newStatus: 'pending' | 'resolved') => {
     setReviews(reviews.map((r) => (r.id === reviewId ? { ...r, status: newStatus } : r)));
+  };
+
+  const handlePlaceAdded = async () => {
+    await loadDashboardData();
   };
 
   return (
@@ -159,7 +199,7 @@ export default function DashboardPage() {
               </button>
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 bg-gradient-to-br from-blue-700 to-blue-900 rounded-full flex items-center justify-center text-white font-semibold">
-                  A
+                  {userInitial}
                 </div>
               </div>
             </div>
@@ -168,6 +208,18 @@ export default function DashboardPage() {
 
         {/* Main Dashboard Content */}
         <main className="flex-1 overflow-auto p-6">
+          {errorMessage && (
+            <div className="mb-6 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+              {errorMessage}
+            </div>
+          )}
+
+          {isLoading && (
+            <div className="mb-6 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-700">
+              Đang tải dữ liệu...
+            </div>
+          )}
+
           {/* Stats Cards */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
             <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
@@ -299,7 +351,7 @@ export default function DashboardPage() {
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
                           <div className="w-10 h-10 bg-gradient-to-br from-gray-300 to-gray-400 rounded-full flex items-center justify-center text-white font-semibold">
-                            {review.author[0]}
+                            {review.author?.[0] || '?'}
                           </div>
                           <div>
                             <p className="font-medium text-gray-900">{review.author}</p>
@@ -314,7 +366,7 @@ export default function DashboardPage() {
                             <Star
                               key={i}
                               className={`w-4 h-4 ${
-                                i < review.rating
+                                i < (review.rating || 0)
                                   ? 'text-yellow-400 fill-yellow-400'
                                   : 'text-gray-300'
                               }`}
@@ -376,9 +428,16 @@ export default function DashboardPage() {
           review={selectedReview}
           onClose={() => setSelectedReview(null)}
           onStatusChange={handleReviewStatusChange}
+          onAuthError={onLogout}
         />
       )}
-      {showAddPlace && <AddPlaceModal onClose={() => setShowAddPlace(false)} />}
+      {showAddPlace && (
+        <AddPlaceModal
+          onClose={() => setShowAddPlace(false)}
+          onPlaceAdded={handlePlaceAdded}
+          onAuthError={onLogout}
+        />
+      )}
     </div>
   );
 }

@@ -1,26 +1,45 @@
 import { useState } from 'react';
 import { X, MapPin, Loader2, CheckCircle } from 'lucide-react';
+import { ApiError, addPlace } from '../api/client';
 
 interface AddPlaceModalProps {
   onClose: () => void;
+  onPlaceAdded: () => void;
+  onAuthError: () => void;
 }
 
-export default function AddPlaceModal({ onClose }: AddPlaceModalProps) {
+export default function AddPlaceModal({ onClose, onPlaceAdded, onAuthError }: AddPlaceModalProps) {
   const [placeId, setPlaceId] = useState('');
   const [isAdding, setIsAdding] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsAdding(true);
+    setErrorMessage(null);
 
-    setTimeout(() => {
-      setIsAdding(false);
+    try {
+      await addPlace(placeId.trim());
       setSuccess(true);
+      await onPlaceAdded();
       setTimeout(() => {
         onClose();
       }, 1500);
-    }, 2000);
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 401) {
+        onAuthError();
+        return;
+      }
+
+      if (error instanceof ApiError) {
+        setErrorMessage(error.message);
+      } else {
+        setErrorMessage('Không thể thêm địa điểm, vui lòng thử lại.');
+      }
+    } finally {
+      setIsAdding(false);
+    }
   };
 
   return (
@@ -48,6 +67,11 @@ export default function AddPlaceModal({ onClose }: AddPlaceModalProps) {
         <form onSubmit={handleSubmit} className="p-6">
           {!success ? (
             <>
+              {errorMessage && (
+                <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-700">
+                  {errorMessage}
+                </div>
+              )}
               <div className="mb-6">
                 <label htmlFor="place-id" className="block text-sm font-medium text-gray-700 mb-2">
                   Google Place ID
