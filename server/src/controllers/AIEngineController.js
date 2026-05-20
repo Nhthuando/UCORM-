@@ -53,3 +53,23 @@ export const getAIReply = async(req,res) => {
         return res.status(500).json({message: "Có lỗi servers!"});
     }
 }
+
+export const approveReview = async(req,res) =>{
+    try {
+        const userId = req.user.id;
+        if(!userId) return res.status(401).json({message: "Không thể xác thực user!"});
+        const {AIReplyId} = req.body;
+        const { reviewId }= req.params;
+        const review = await prisma.reviews.findUnique({where: {id: reviewId}, include: {places: {select: {user_id: true}}} });
+        if(!review) return res.status(404).json({message: "Review không tồn tại!"});
+        if(review.places.user_id !== userId) return res.status(403).json({message: "User chưa tồn tại place chứa reviewId này!"});
+        if(review.status === "RESOLVED") return res.status(400).json({message: "Review đã được resolved!"});
+        const AIReply = await prisma.ai_replies.findFirst({where: {id: AIReplyId, review_id: reviewId}});
+        if(!AIReply) return res.status(400).json({message: "AIReplyId không thuộc review này "});
+        await prisma.reviews.update({where: {id: reviewId}, data: {approved_reply_id: AIReplyId, status: "RESOLVED"}});
+        return res.status(201).json({message:"Đã approve review!", reviewId: review.id, status: review.status, approved_reply_id: review.approved_reply_id});
+    } catch (error) {
+        console.log(error);
+        return res.status(500).json({message: "Có lỗi server!"});
+    }
+}
