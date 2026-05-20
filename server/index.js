@@ -11,9 +11,8 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-
 const allowedOrigins = [
-    "https://ucorm.onrender.com",
+    "ucorm.vercel.app",
     "http://localhost:5173"
 ];
 
