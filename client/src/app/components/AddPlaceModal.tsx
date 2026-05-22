@@ -95,9 +95,16 @@ export default function AddPlaceModal({ onClose, onPlaceAdded, onAuthError }: Ad
                   Làm thế nào để tìm Place ID?
                 </h4>
                 <ol className="text-xs text-blue-800 space-y-1 list-decimal list-inside">
-                  <li>Mở Google Maps và tìm địa điểm của bạn</li>
+                  <li>Nhấn để truy cập vào trang web sau: <a 
+      href="https://developers.google.com/maps/documentation/javascript/examples/places-placeid-finder"
+      target="_blank"
+      rel="noopener noreferrer"
+      className="inline-block bg-blue-600 text-white font-bold px-2 py-0.5 rounded shadow-sm shadow-blue-500/50 hover:bg-blue-700 transition-colors no-underline"
+    >
+      Place ID
+    </a> </li>
                   <li>Click vào địa điểm để xem thông tin</li>
-                  <li>Copy URL, Place ID sẽ nằm trong URL</li>
+                  <li>Lấy Place ID</li>
                 </ol>
               </div>
 
