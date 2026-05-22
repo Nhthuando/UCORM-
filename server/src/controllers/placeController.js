@@ -10,7 +10,7 @@ export const postPlace = async(req,res) => {
         const {ggPlaceId} = req.body;
         if (!ggPlaceId) return res.status(400).json({ message: "ggPlaceId là bắt buộc!" });
         const checkPlace = await prisma.places.findFirst({where: {user_id: userId, google_place_id: ggPlaceId }});
-        if(checkPlace) return res.status(400).json  ({message: "Place đã tồn tại!"});
+        if(checkPlace) return res.status(200).json  ({message: "Place đã tồn tại", place: checkPlace });
         const ggResponse = await fetch(`https://maps.googleapis.com/maps/api/place/details/json?place_id=${ggPlaceId}&fields=name&key=${process.env.GOOGLE_API_KEY}`);
         const ggData = await ggResponse.json();
         if (ggData.status !== "OK") return res.status(400).json({ message: "Place ID không hợp lệ hoặc không tìm thấy!" });
@@ -47,7 +47,7 @@ export const getReview = async(req,res) => {
         const reviewsData = await reviewsResponse.json();
         for(const i of reviewsData.result.reviews){
             const googleId = `${place.google_place_id}_${i.time}_${i.author_name}`;
-            const review = await prisma.reviews.findUnique({where: {google_id: googleId}})
+            const review = await prisma.reviews.findFirst({where: {google_id: googleId, place_id: placeId}})
             if(!review) await prisma.reviews.create({data: {google_id: googleId,author_name: i.author_name, rating: i.rating, text: i.text,place_id: placeId }})
         }
         const savedReviews = await prisma.reviews.findMany({where: { place_id: placeId }});

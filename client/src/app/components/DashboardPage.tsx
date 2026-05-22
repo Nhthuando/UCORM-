@@ -90,13 +90,17 @@ export default function DashboardPage({ user, onLogout }: DashboardPageProps) {
   const loadReviewsForPlace = async (place: ApiPlace) => {
     try {
       const response = await getPlaceReviews(place.id);
+      if (!response.reviews || response.reviews.length === 0) {
+        const fetched = await fetchReviews(place.id);
+        return fetched.savedReviews.map((review) => mapReview(review, place));
+      }
       return response.reviews.map((review) => mapReview(review, place));
     } catch (error) {
-      if (error instanceof ApiError && error.status === 404) {
-        const response = await fetchReviews(place.id);
-        return response.savedReviews.map((review) => mapReview(review, place));
+      if (error instanceof ApiError && (error.status === 401 || error.status === 403)) {
+        throw error;
       }
-      throw error;
+      const response = await fetchReviews(place.id);
+      return response.savedReviews.map((review) => mapReview(review, place));
     }
   };
 
