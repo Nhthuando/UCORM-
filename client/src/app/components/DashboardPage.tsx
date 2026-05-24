@@ -381,7 +381,7 @@ export default function DashboardPage({ user, onLogout }: DashboardPageProps) {
                     <tr key={review.id} className="hover:bg-gray-50 transition-colors">
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-gray-300 to-gray-400 flex items-center justify-center text-white font-semibold uppercase leading-none">
+                          <div className="review-avatar bg-gradient-to-br from-gray-300 to-gray-400 flex items-center justify-center text-white font-semibold uppercase leading-none">
                             {review.author?.[0] || '?'}
                           </div>
                           <div>

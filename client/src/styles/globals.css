@@ -271,6 +271,23 @@ body table tr:hover {
 	animation: line-run 2s linear infinite;
 }
 
+/* Review avatars */
+.review-avatar {
+	width: 42px;
+	height: 42px;
+	min-width: 42px;
+	border-radius: 9999px;
+	aspect-ratio: 1 / 1;
+	overflow: hidden;
+	flex-shrink: 0;
+}
+
+.review-avatar--lg {
+	width: 52px;
+	height: 52px;
+	min-width: 52px;
+}
+
 @keyframes marquee {
 	0% {
 		transform: translateX(0);

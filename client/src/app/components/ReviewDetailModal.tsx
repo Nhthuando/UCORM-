@@ -154,7 +154,7 @@ export default function ReviewDetailModal({
         {/* Review Content */}
         <div className="p-6 border-b border-gray-200 overflow-y-auto">
           <div className="flex items-start gap-4 mb-4">
-            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-gray-300 to-gray-400 flex items-center justify-center text-white font-bold text-lg uppercase leading-none">
+            <div className="review-avatar review-avatar--lg bg-gradient-to-br from-gray-300 to-gray-400 flex items-center justify-center text-white font-bold text-lg uppercase leading-none">
               {review.author?.[0] || '?'}
             </div>
             <div className="flex-1">
