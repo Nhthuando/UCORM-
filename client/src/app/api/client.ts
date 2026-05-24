@@ -40,7 +40,7 @@ type RequestOptions = {
 };
 
 const API_BASE = import.meta.env.VITE_API_URL || '/api';
-const TOKEN_KEY = 'ucorm_token';
+const TOKEN_KEY = 'ucorm_token';    
 const USER_KEY = 'ucorm_user';
 
 export class ApiError extends Error {
@@ -102,6 +102,13 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
   const data = rawText ? safeJsonParse(rawText) : null;
 
   if (!response.ok) {
+    if (response.status === 401 || response.status === 403) {
+      // Token expired or invalid: clear client auth and force re-login.
+      clearAuth();
+      if (typeof window !== 'undefined') {
+        window.location.href = '/login';
+      }
+    }
     const message =
       (data && typeof data === 'object' && 'message' in data && data.message) ||
       `Request failed with status ${response.status}`;

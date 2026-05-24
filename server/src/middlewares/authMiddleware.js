@@ -14,7 +14,9 @@ export const authMiddleware = (req,res,next) => {
         req.user = {id, name, email};
         next();
     } catch (error) {
-        console.log(error);
-        return res.status(500).json({message: "Token hết hạn hoặc có lỗi token!"});
+        if (error?.name === "TokenExpiredError") {
+            return res.status(401).json({ message: "Token hết hạn!" });
+        }
+        return res.status(401).json({ message: "Token không hợp lệ!" });
     }
 }
