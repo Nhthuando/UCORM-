@@ -103,7 +103,7 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
   const data = rawText ? safeJsonParse(rawText) : null;
 
   if (!response.ok) {
-    if (response.status === 401 || response.status === 403) {
+    if (!options.skipAuth && (response.status === 401 || response.status === 403)) {
       // Token expired or invalid: clear client auth and force re-login.
       clearAuth();
       if (typeof window !== 'undefined') {

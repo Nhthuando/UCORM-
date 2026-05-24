@@ -45,6 +45,7 @@ interface DashboardPageProps {
 export default function DashboardPage({ user, onLogout }: DashboardPageProps) {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [filterStatus, setFilterStatus] = useState<'all' | 'pending' | 'resolved'>('all');
+  const [searchTerm, setSearchTerm] = useState('');
   const [selectedReview, setSelectedReview] = useState<Review | null>(null);
   const [showAddPlace, setShowAddPlace] = useState(false);
   const [reviews, setReviews] = useState<Review[]>([]);
@@ -123,8 +124,22 @@ export default function DashboardPage({ user, onLogout }: DashboardPageProps) {
     };
   };
 
-  const filteredReviews =
-    filterStatus === 'all' ? reviews : reviews.filter((r) => r.status === filterStatus);
+  const normalizedSearch = searchTerm.trim().toLowerCase();
+  const filteredReviews = reviews.filter((review) => {
+    const matchesStatus = filterStatus === 'all' || review.status === filterStatus;
+    if (!normalizedSearch) return matchesStatus;
+
+    const haystack = [
+      review.author,
+      review.place,
+      review.text,
+      review.date,
+    ]
+      .join(' ')
+      .toLowerCase();
+
+    return matchesStatus && haystack.includes(normalizedSearch);
+  });
 
   const stats = {
     total: reviews.length,
@@ -207,6 +222,8 @@ export default function DashboardPage({ user, onLogout }: DashboardPageProps) {
                 <input
                   type="search"
                   placeholder="Tìm kiếm đánh giá..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
                   className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg w-80 focus:outline-none focus:ring-2 focus:ring-blue-700 focus:border-transparent"
                 />
               </div>
