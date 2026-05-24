@@ -24,6 +24,7 @@ type ApiReview = {
   status?: string | null;
   created_at?: string | null;
   published_at?: string | null;
+  approved_reply_id?: string | null;
 };
 
 type ApiReply = {

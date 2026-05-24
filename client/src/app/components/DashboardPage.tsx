@@ -34,6 +34,7 @@ type Review = {
   status: 'pending' | 'resolved';
   date: string;
   place: string;
+  approvedReplyId?: string | null;
 };
 
 interface DashboardPageProps {
@@ -118,6 +119,7 @@ export default function DashboardPage({ user, onLogout }: DashboardPageProps) {
       status,
       date,
       place: place.name || 'Địa điểm',
+      approvedReplyId: review.approved_reply_id ?? null,
     };
   };
 
@@ -131,8 +133,18 @@ export default function DashboardPage({ user, onLogout }: DashboardPageProps) {
     places: places.length,
   };
 
-  const handleReviewStatusChange = (reviewId: string, newStatus: 'pending' | 'resolved') => {
-    setReviews(reviews.map((r) => (r.id === reviewId ? { ...r, status: newStatus } : r)));
+  const handleReviewStatusChange = (
+    reviewId: string,
+    newStatus: 'pending' | 'resolved',
+    approvedReplyId?: string | null
+  ) => {
+    setReviews(
+      reviews.map((r) =>
+        r.id === reviewId
+          ? { ...r, status: newStatus, approvedReplyId: approvedReplyId ?? r.approvedReplyId }
+          : r
+      )
+    );
   };
 
   const handlePlaceAdded = async () => {
@@ -205,7 +217,7 @@ export default function DashboardPage({ user, onLogout }: DashboardPageProps) {
                 <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
               </button>
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-gradient-to-br from-blue-700 to-blue-900 rounded-full flex items-center justify-center text-white font-semibold">
+                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-700 to-blue-900 flex items-center justify-center text-white font-semibold uppercase leading-none">
                   {userInitial}
                 </div>
               </div>
@@ -357,7 +369,7 @@ export default function DashboardPage({ user, onLogout }: DashboardPageProps) {
                     <tr key={review.id} className="hover:bg-gray-50 transition-colors">
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 bg-gradient-to-br from-gray-300 to-gray-400 rounded-full flex items-center justify-center text-white font-semibold">
+                          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-gray-300 to-gray-400 flex items-center justify-center text-white font-semibold uppercase leading-none">
                             {review.author?.[0] || '?'}
                           </div>
                           <div>

@@ -16,6 +16,7 @@ type Review = {
   status: 'pending' | 'resolved';
   date: string;
   place: string;
+  approvedReplyId?: string | null;
 };
 
 type AIReplyOption = {
@@ -28,7 +29,11 @@ type AIReplyOption = {
 interface ReviewDetailModalProps {
   review: Review;
   onClose: () => void;
-  onStatusChange: (reviewId: string, newStatus: 'pending' | 'resolved') => void;
+  onStatusChange: (
+    reviewId: string,
+    newStatus: 'pending' | 'resolved',
+    approvedReplyId?: string | null
+  ) => void;
   onAuthError: () => void;
 }
 
@@ -85,6 +90,10 @@ export default function ReviewDetailModal({
     };
   }, [review.id, onAuthError]);
 
+  useEffect(() => {
+    setSelectedReply(review.approvedReplyId ?? null);
+  }, [review.approvedReplyId, review.id]);
+
   const handleGenerateAI = async () => {
     setIsGenerating(true);
     setErrorMessage(null);
@@ -111,7 +120,7 @@ export default function ReviewDetailModal({
     setErrorMessage(null);
     try {
       await approveReview(review.id, replyId);
-      onStatusChange(review.id, 'resolved');
+      onStatusChange(review.id, 'resolved', replyId);
       onClose();
     } catch (error) {
       if (error instanceof ApiError && error.status === 401) {
@@ -145,7 +154,7 @@ export default function ReviewDetailModal({
         {/* Review Content */}
         <div className="p-6 border-b border-gray-200 overflow-y-auto">
           <div className="flex items-start gap-4 mb-4">
-            <div className="w-12 h-12 bg-gradient-to-br from-gray-300 to-gray-400 rounded-full flex items-center justify-center text-white font-bold text-lg">
+            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-gray-300 to-gray-400 flex items-center justify-center text-white font-bold text-lg uppercase leading-none">
               {review.author?.[0] || '?'}
             </div>
             <div className="flex-1">
@@ -221,23 +230,36 @@ export default function ReviewDetailModal({
             <div>
               <h3 className="font-semibold text-gray-900 mb-4">Chọn phản hồi phù hợp:</h3>
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-                {aiReplies.map((reply) => (
-                  <div
-                    key={reply.id}
-                    className={`border-2 rounded-xl p-4 transition-all cursor-pointer ${
-                      selectedReply === reply.id
-                        ? 'border-blue-700 bg-blue-50'
-                        : 'border-gray-200 hover:border-blue-300'
-                    }`}
-                    onClick={() => setSelectedReply(reply.id)}
-                  >
+                {aiReplies.map((reply) => {
+                  const isApproved =
+                    review.status === 'resolved' &&
+                    Boolean(review.approvedReplyId) &&
+                    reply.id === review.approvedReplyId;
+                  const isSelected = selectedReply === reply.id;
+
+                  return (
+                    <div
+                      key={reply.id}
+                      className={`border-2 rounded-xl p-4 transition-all cursor-pointer ${
+                        isApproved
+                          ? 'border-emerald-600 bg-emerald-50'
+                          : isSelected
+                            ? 'border-blue-700 bg-blue-50'
+                            : 'border-gray-200 hover:border-blue-300'
+                      }`}
+                      onClick={() => setSelectedReply(reply.id)}
+                    >
                     <div className="flex items-center justify-between mb-3">
                       <div>
                         <h4 className="font-semibold text-gray-900">{reply.title}</h4>
                         <p className="text-xs text-gray-500">{reply.tone}</p>
                       </div>
-                      {selectedReply === reply.id && (
-                        <div className="w-6 h-6 bg-blue-700 rounded-full flex items-center justify-center">
+                      {(isApproved || isSelected) && (
+                        <div
+                          className={`w-6 h-6 rounded-full flex items-center justify-center ${
+                            isApproved ? 'bg-emerald-600' : 'bg-blue-700'
+                          }`}
+                        >
                           <Check className="w-4 h-4 text-white" />
                         </div>
                       )}
@@ -245,17 +267,23 @@ export default function ReviewDetailModal({
                     <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-line">
                       {reply.content}
                     </p>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleApprove(reply.id);
-                      }}
-                      className="mt-4 w-full px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors font-medium text-sm"
-                    >
-                      Chấp nhận
-                    </button>
-                  </div>
-                ))}
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleApprove(reply.id);
+                        }}
+                        disabled={isApproved}
+                        className={`mt-4 w-full px-4 py-2 rounded-lg transition-colors font-medium text-sm ${
+                          isApproved
+                            ? 'bg-emerald-100 text-emerald-700 cursor-default'
+                            : 'bg-emerald-600 text-white hover:bg-emerald-700'
+                        }`}
+                      >
+                        {isApproved ? 'Đã chọn' : 'Chấp nhận'}
+                      </button>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           )}
