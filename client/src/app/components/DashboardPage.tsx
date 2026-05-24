@@ -5,7 +5,6 @@ import {
   MapPin,
   Settings,
   Search,
-  Bell,
   Menu,
   X,
   Star,
@@ -53,7 +52,8 @@ export default function DashboardPage({ user, onLogout }: DashboardPageProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const userInitial = (user?.name || user?.email || 'U').trim().charAt(0).toUpperCase();
+  const userName = (user?.name || user?.email || 'bạn').trim();
+  const userInitial = userName.charAt(0).toUpperCase();
 
   useEffect(() => {
     void loadDashboardData();
@@ -228,15 +228,10 @@ export default function DashboardPage({ user, onLogout }: DashboardPageProps) {
                 />
               </div>
             </div>
-            <div className="flex items-center gap-4">
-              <button className="relative p-2 hover:bg-gray-100 rounded-lg transition-colors">
-                <Bell className="w-5 h-5 text-gray-600" />
-                <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
-              </button>
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-700 to-blue-900 flex items-center justify-center text-white font-semibold uppercase leading-none">
-                  {userInitial}
-                </div>
+            <div className="flex items-center gap-3">
+              <span className="text-sm text-gray-600">Xin chào, {userName}</span>
+              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-700 to-blue-900 flex items-center justify-center text-white font-semibold uppercase leading-none">
+                {userInitial}
               </div>
             </div>
           </div>
@@ -381,7 +376,7 @@ export default function DashboardPage({ user, onLogout }: DashboardPageProps) {
                     </th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-200">
+                <tbody>
                   {filteredReviews.map((review) => (
                     <tr key={review.id} className="hover:bg-gray-50 transition-colors">
                       <td className="px-6 py-4">

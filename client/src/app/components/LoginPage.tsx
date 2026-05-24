@@ -54,7 +54,16 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
           <p className="text-gray-600 text-center">Quản trị đánh giá bằng AI</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form
+          onSubmit={handleSubmit}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              e.currentTarget.requestSubmit();
+            }
+          }}
+          className="space-y-4"
+        >
           {errorMessage && (
             <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-700">
               {errorMessage}
