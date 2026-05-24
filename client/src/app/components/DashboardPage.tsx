@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useState, type ChangeEvent } from 'react';
 import {
   Store,
   LayoutDashboard,
@@ -41,6 +41,233 @@ interface DashboardPageProps {
   onLogout: () => void;
 }
 
+type Stats = {
+  total: number;
+  pending: number;
+  resolved: number;
+  places: number;
+};
+
+const StatsCards = memo(function StatsCards({ stats }: { stats: Stats }) {
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+      <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-gray-600 text-sm mb-1">Tổng đánh giá</p>
+            <p className="text-3xl font-bold text-gray-900">{stats.total}</p>
+          </div>
+          <div className="bg-blue-50 p-3 rounded-lg">
+            <MessageSquare className="w-6 h-6 text-blue-700" />
+          </div>
+        </div>
+      </div>
+
+      <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-gray-600 text-sm mb-1">Chờ xử lý</p>
+            <p className="text-3xl font-bold text-yellow-600">{stats.pending}</p>
+          </div>
+          <div className="bg-yellow-50 p-3 rounded-lg">
+            <Sparkles className="w-6 h-6 text-yellow-600" />
+          </div>
+        </div>
+      </div>
+
+      <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-gray-600 text-sm mb-1">Đã xử lý</p>
+            <p className="text-3xl font-bold text-emerald-600">{stats.resolved}</p>
+          </div>
+          <div className="bg-emerald-50 p-3 rounded-lg">
+            <Star className="w-6 h-6 text-emerald-600" />
+          </div>
+        </div>
+      </div>
+
+      <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-gray-600 text-sm mb-1">Địa điểm</p>
+            <p className="text-3xl font-bold text-gray-900">{stats.places}</p>
+          </div>
+          <div className="bg-gray-50 p-3 rounded-lg">
+            <MapPin className="w-6 h-6 text-gray-700" />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+});
+
+type ReviewsSectionProps = {
+  filterStatus: 'all' | 'pending' | 'resolved';
+  filteredReviews: Review[];
+  stats: Stats;
+  onAddPlace: () => void;
+  onFilterChange: (value: 'all' | 'pending' | 'resolved') => void;
+  onReviewSelect: (review: Review) => void;
+};
+
+const ReviewsSection = memo(function ReviewsSection({
+  filterStatus,
+  filteredReviews,
+  stats,
+  onAddPlace,
+  onFilterChange,
+  onReviewSelect,
+}: ReviewsSectionProps) {
+  return (
+    <div className="bg-white rounded-xl shadow-sm border border-gray-100">
+      <div className="p-6 border-b border-gray-200">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-xl font-bold text-gray-900">Đánh giá</h2>
+          <button
+            onClick={onAddPlace}
+            className="flex items-center gap-2 px-4 py-2 bg-blue-700 text-white rounded-lg hover:bg-blue-800 transition-colors font-medium"
+          >
+            <Plus className="w-4 h-4" />
+            Thêm địa điểm
+          </button>
+        </div>
+
+        <div className="flex gap-2">
+          <button
+            onClick={() => onFilterChange('all')}
+            className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+              filterStatus === 'all'
+                ? 'bg-blue-700 text-white'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+            }`}
+          >
+            Tất cả ({stats.total})
+          </button>
+          <button
+            onClick={() => onFilterChange('pending')}
+            className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+              filterStatus === 'pending'
+                ? 'bg-blue-700 text-white'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+            }`}
+          >
+            Chờ xử lý ({stats.pending})
+          </button>
+          <button
+            onClick={() => onFilterChange('resolved')}
+            className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+              filterStatus === 'resolved'
+                ? 'bg-blue-700 text-white'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+            }`}
+          >
+            Đã xử lý ({stats.resolved})
+          </button>
+        </div>
+      </div>
+
+      <div className="overflow-x-auto">
+        <table className="w-full">
+          <thead className="bg-gray-50 border-b border-gray-200">
+            <tr>
+              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">
+                Tác giả
+              </th>
+              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">
+                Địa điểm
+              </th>
+              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">
+                Đánh giá
+              </th>
+              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">
+                Nội dung
+              </th>
+              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">
+                Trạng thái
+              </th>
+              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">
+                Thao tác
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {filteredReviews.map((review) => (
+              <tr key={review.id} className="hover:bg-gray-50 transition-colors">
+                <td className="px-6 py-4">
+                  <div className="flex items-center gap-3">
+                    <div className="review-avatar bg-gradient-to-br from-gray-300 to-gray-400 flex items-center justify-center text-white font-semibold uppercase leading-none">
+                      {review.author?.[0] || '?'}
+                    </div>
+                    <div>
+                      <p className="font-medium text-gray-900">{review.author}</p>
+                      <p className="text-sm text-gray-500">{review.date}</p>
+                    </div>
+                  </div>
+                </td>
+                <td className="px-6 py-4 text-sm text-gray-700">{review.place}</td>
+                <td className="px-6 py-4">
+                  <div className="flex gap-0.5">
+                    {[...Array(5)].map((_, i) => (
+                      <Star
+                        key={i}
+                        className={`w-4 h-4 ${
+                          i < (review.rating || 0)
+                            ? 'text-yellow-400 fill-yellow-400'
+                            : 'text-gray-300'
+                        }`}
+                      />
+                    ))}
+                  </div>
+                </td>
+                <td className="px-6 py-4 max-w-md">
+                  <p className="text-sm text-gray-700 truncate">{review.text}</p>
+                </td>
+                <td className="px-6 py-4">
+                  <span
+                    className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${
+                      review.status === 'pending'
+                        ? 'bg-yellow-100 text-yellow-800'
+                        : 'bg-emerald-100 text-emerald-800'
+                    }`}
+                  >
+                    {review.status === 'pending' ? 'Chờ xử lý' : 'Đã xử lý'}
+                  </span>
+                </td>
+                <td className="px-6 py-4">
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => onReviewSelect(review)}
+                      className="px-3 py-1.5 bg-blue-700 text-white text-sm rounded-lg hover:bg-blue-800 transition-colors font-medium flex items-center gap-1"
+                    >
+                      <Sparkles className="w-4 h-4" />
+                      AI Reply
+                    </button>
+                    <button
+                      onClick={() => onReviewSelect(review)}
+                      className="px-3 py-1.5 bg-gray-100 text-gray-700 text-sm rounded-lg hover:bg-gray-200 transition-colors font-medium"
+                    >
+                      Chi tiết
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {filteredReviews.length === 0 && (
+        <div className="py-16 text-center">
+          <MessageSquare className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+          <h3 className="text-lg font-medium text-gray-900 mb-2">Chưa có đánh giá</h3>
+          <p className="text-gray-600">Thêm địa điểm để bắt đầu quản lý đánh giá</p>
+        </div>
+      )}
+    </div>
+  );
+});
+
 export default function DashboardPage({ user, onLogout }: DashboardPageProps) {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [filterStatus, setFilterStatus] = useState<'all' | 'pending' | 'resolved'>('all');
@@ -55,11 +282,7 @@ export default function DashboardPage({ user, onLogout }: DashboardPageProps) {
   const userName = (user?.name || user?.email || 'bạn').trim();
   const userInitial = userName.charAt(0).toUpperCase();
 
-  useEffect(() => {
-    void loadDashboardData();
-  }, []);
-
-  const loadDashboardData = async () => {
+  const loadDashboardData = useCallback(async () => {
     setIsLoading(true);
     setErrorMessage(null);
 
@@ -87,7 +310,11 @@ export default function DashboardPage({ user, onLogout }: DashboardPageProps) {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [onLogout]);
+
+  useEffect(() => {
+    void loadDashboardData();
+  }, [loadDashboardData]);
 
   const loadReviewsForPlace = async (place: ApiPlace) => {
     try {
@@ -124,55 +351,78 @@ export default function DashboardPage({ user, onLogout }: DashboardPageProps) {
     };
   };
 
-  const normalizedSearch = searchTerm.trim().toLowerCase();
-  const filteredReviews = reviews.filter((review) => {
-    const matchesStatus = filterStatus === 'all' || review.status === filterStatus;
-    if (!normalizedSearch) return matchesStatus;
+  const normalizedSearch = useMemo(() => searchTerm.trim().toLowerCase(), [searchTerm]);
 
-    const haystack = [
-      review.author,
-      review.place,
-      review.text,
-      review.date,
-    ]
-      .join(' ')
-      .toLowerCase();
+  const filteredReviews = useMemo(() => {
+    return reviews.filter((review) => {
+      const matchesStatus = filterStatus === 'all' || review.status === filterStatus;
+      if (!normalizedSearch) return matchesStatus;
 
-    return matchesStatus && haystack.includes(normalizedSearch);
-  });
+      const haystack = [review.author, review.place, review.text, review.date]
+        .join(' ')
+        .toLowerCase();
 
-  const stats = {
-    total: reviews.length,
-    pending: reviews.filter((r) => r.status === 'pending').length,
-    resolved: reviews.filter((r) => r.status === 'resolved').length,
-    places: places.length,
-  };
+      return matchesStatus && haystack.includes(normalizedSearch);
+    });
+  }, [filterStatus, normalizedSearch, reviews]);
+
+  const stats = useMemo<Stats>(() => {
+    const pending = reviews.filter((r) => r.status === 'pending').length;
+    const resolved = reviews.filter((r) => r.status === 'resolved').length;
+
+    return {
+      total: reviews.length,
+      pending,
+      resolved,
+      places: places.length,
+    };
+  }, [places.length, reviews]);
 
   const handleReviewStatusChange = (
     reviewId: string,
     newStatus: 'pending' | 'resolved',
     approvedReplyId?: string | null
   ) => {
-    setReviews(
-      reviews.map((r) =>
-        r.id === reviewId
-          ? { ...r, status: newStatus, approvedReplyId: approvedReplyId ?? r.approvedReplyId }
-          : r
+    setReviews((current) =>
+      current.map((review) =>
+        review.id === reviewId
+          ? {
+              ...review,
+              status: newStatus,
+              approvedReplyId: approvedReplyId ?? review.approvedReplyId,
+            }
+          : review
       )
     );
   };
 
-  const handlePlaceAdded = async () => {
+  const handlePlaceAdded = useCallback(async () => {
     await loadDashboardData();
-  };
+  }, [loadDashboardData]);
+
+  const handleToggleSidebar = useCallback(() => {
+    setSidebarOpen((open) => !open);
+  }, []);
+
+  const handleOpenAddPlace = useCallback(() => {
+    setShowAddPlace(true);
+  }, []);
+
+  const handleSearchChange = useCallback(
+    (event: ChangeEvent<HTMLInputElement>) => {
+      setSearchTerm(event.target.value);
+    },
+    []
+  );
 
   return (
     <div className="flex h-screen bg-gray-50">
       {/* Sidebar */}
       <aside
-        className={`bg-white border-r border-gray-200 transition-all duration-300 ${
+        className={`bg-white border-r border-gray-200 flex-shrink-0 overflow-hidden transition-[width] duration-300 ease-out motion-reduce:transition-none ${
           sidebarOpen ? 'w-64' : 'w-0 lg:w-20'
-        } overflow-hidden`}
+        }`}
+        style={{ willChange: 'width' }}
       >
         <div className="p-6 border-b border-gray-200">
           <div className="flex items-center gap-3">
@@ -212,7 +462,7 @@ export default function DashboardPage({ user, onLogout }: DashboardPageProps) {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <button
-                onClick={() => setSidebarOpen(!sidebarOpen)}
+                onClick={handleToggleSidebar}
                 className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
               >
                 {sidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
@@ -223,7 +473,7 @@ export default function DashboardPage({ user, onLogout }: DashboardPageProps) {
                   type="search"
                   placeholder="Tìm kiếm đánh giá..."
                   value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
+                  onChange={handleSearchChange}
                   className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg w-80 focus:outline-none focus:ring-2 focus:ring-blue-700 focus:border-transparent"
                 />
               </div>
@@ -252,204 +502,17 @@ export default function DashboardPage({ user, onLogout }: DashboardPageProps) {
           )}
 
           {/* Stats Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
-            <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-gray-600 text-sm mb-1">Tổng đánh giá</p>
-                  <p className="text-3xl font-bold text-gray-900">{stats.total}</p>
-                </div>
-                <div className="bg-blue-50 p-3 rounded-lg">
-                  <MessageSquare className="w-6 h-6 text-blue-700" />
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-gray-600 text-sm mb-1">Chờ xử lý</p>
-                  <p className="text-3xl font-bold text-yellow-600">{stats.pending}</p>
-                </div>
-                <div className="bg-yellow-50 p-3 rounded-lg">
-                  <Sparkles className="w-6 h-6 text-yellow-600" />
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-gray-600 text-sm mb-1">Đã xử lý</p>
-                  <p className="text-3xl font-bold text-emerald-600">{stats.resolved}</p>
-                </div>
-                <div className="bg-emerald-50 p-3 rounded-lg">
-                  <Star className="w-6 h-6 text-emerald-600" />
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-gray-600 text-sm mb-1">Địa điểm</p>
-                  <p className="text-3xl font-bold text-gray-900">{stats.places}</p>
-                </div>
-                <div className="bg-gray-50 p-3 rounded-lg">
-                  <MapPin className="w-6 h-6 text-gray-700" />
-                </div>
-              </div>
-            </div>
-          </div>
+          <StatsCards stats={stats} />
 
           {/* Reviews Section */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100">
-            <div className="p-6 border-b border-gray-200">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-xl font-bold text-gray-900">Đánh giá</h2>
-                <button
-                  onClick={() => setShowAddPlace(true)}
-                  className="flex items-center gap-2 px-4 py-2 bg-blue-700 text-white rounded-lg hover:bg-blue-800 transition-colors font-medium"
-                >
-                  <Plus className="w-4 h-4" />
-                  Thêm địa điểm
-                </button>
-              </div>
-
-              {/* Filter Tabs */}
-              <div className="flex gap-2">
-                <button
-                  onClick={() => setFilterStatus('all')}
-                  className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                    filterStatus === 'all'
-                      ? 'bg-blue-700 text-white'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                  }`}
-                >
-                  Tất cả ({stats.total})
-                </button>
-                <button
-                  onClick={() => setFilterStatus('pending')}
-                  className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                    filterStatus === 'pending'
-                      ? 'bg-blue-700 text-white'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                  }`}
-                >
-                  Chờ xử lý ({stats.pending})
-                </button>
-                <button
-                  onClick={() => setFilterStatus('resolved')}
-                  className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                    filterStatus === 'resolved'
-                      ? 'bg-blue-700 text-white'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                  }`}
-                >
-                  Đã xử lý ({stats.resolved})
-                </button>
-              </div>
-            </div>
-
-            {/* Reviews Table */}
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-gray-50 border-b border-gray-200">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">
-                      Tác giả
-                    </th>
-                    <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">
-                      Địa điểm
-                    </th>
-                    <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">
-                      Đánh giá
-                    </th>
-                    <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">
-                      Nội dung
-                    </th>
-                    <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">
-                      Trạng thái
-                    </th>
-                    <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">
-                      Thao tác
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredReviews.map((review) => (
-                    <tr key={review.id} className="hover:bg-gray-50 transition-colors">
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-3">
-                          <div className="review-avatar bg-gradient-to-br from-gray-300 to-gray-400 flex items-center justify-center text-white font-semibold uppercase leading-none">
-                            {review.author?.[0] || '?'}
-                          </div>
-                          <div>
-                            <p className="font-medium text-gray-900">{review.author}</p>
-                            <p className="text-sm text-gray-500">{review.date}</p>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-700">{review.place}</td>
-                      <td className="px-6 py-4">
-                        <div className="flex gap-0.5">
-                          {[...Array(5)].map((_, i) => (
-                            <Star
-                              key={i}
-                              className={`w-4 h-4 ${
-                                i < (review.rating || 0)
-                                  ? 'text-yellow-400 fill-yellow-400'
-                                  : 'text-gray-300'
-                              }`}
-                            />
-                          ))}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 max-w-md">
-                        <p className="text-sm text-gray-700 truncate">{review.text}</p>
-                      </td>
-                      <td className="px-6 py-4">
-                        <span
-                          className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${
-                            review.status === 'pending'
-                              ? 'bg-yellow-100 text-yellow-800'
-                              : 'bg-emerald-100 text-emerald-800'
-                          }`}
-                        >
-                          {review.status === 'pending' ? 'Chờ xử lý' : 'Đã xử lý'}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="flex gap-2">
-                          <button
-                            onClick={() => setSelectedReview(review)}
-                            className="px-3 py-1.5 bg-blue-700 text-white text-sm rounded-lg hover:bg-blue-800 transition-colors font-medium flex items-center gap-1"
-                          >
-                            <Sparkles className="w-4 h-4" />
-                            AI Reply
-                          </button>
-                          <button
-                            onClick={() => setSelectedReview(review)}
-                            className="px-3 py-1.5 bg-gray-100 text-gray-700 text-sm rounded-lg hover:bg-gray-200 transition-colors font-medium"
-                          >
-                            Chi tiết
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            {filteredReviews.length === 0 && (
-              <div className="py-16 text-center">
-                <MessageSquare className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-gray-900 mb-2">Chưa có đánh giá</h3>
-                <p className="text-gray-600">Thêm địa điểm để bắt đầu quản lý đánh giá</p>
-              </div>
-            )}
-          </div>
+          <ReviewsSection
+            filterStatus={filterStatus}
+            filteredReviews={filteredReviews}
+            stats={stats}
+            onAddPlace={handleOpenAddPlace}
+            onFilterChange={setFilterStatus}
+            onReviewSelect={setSelectedReview}
+          />
         </main>
       </div>
 

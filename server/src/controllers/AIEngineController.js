@@ -67,7 +67,7 @@ export const approveReview = async(req,res) =>{
         const AIReply = await prisma.ai_replies.findFirst({where: {id: AIReplyId, review_id: reviewId}});
         if(!AIReply) return res.status(400).json({message: "AIReplyId không thuộc review này "});
         await prisma.reviews.update({where: {id: reviewId}, data: {approved_reply_id: AIReplyId, status: "RESOLVED"}});
-        return res.status(201).json({message:"Đã approve review!", reviewId: review.id, status: review.status, approved_reply_id: review.approved_reply_id});
+        return res.status(201).json({message:"Đã approve review!", reviewId: review.id, status: "RESOLVED", approved_reply_id: review.approved_reply_id});
     } catch (error) {
         console.log(error);
         return res.status(500).json({message: "Có lỗi server!"});
